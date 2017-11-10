@@ -6,7 +6,7 @@ The following topics show how you can execute this example on your AWS account. 
 
 This repository is for learning reasons and if you expect automation on the deployment of this service go out of here. :smile:
 
-## Deploying and Testing in your machine
+## Deploying and Testing from your machine
 
 The following steps show how can you deploy and test this service.
 
