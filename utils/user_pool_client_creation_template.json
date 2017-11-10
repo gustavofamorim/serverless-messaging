@@ -1,0 +1,9 @@
+{
+  "UserPoolId": "us-east-1_VQhNzyHVZ",
+  "ClientName": "messaging_pool_client",
+  "GenerateSecret": false,
+  "RefreshTokenValidity": 30,
+  "ExplicitAuthFlows": [
+    "ADMIN_NO_SRP_AUTH"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "UserPoolId": "us-east-1_VQhNzyHVZ",
+  "Username": "gustavoamorim",
+  "UserAttributes": [
+    {
+        "Name": "email",
+        "Value": "gustavofreitasdeamorim@gmail.com"
+    }
+  ],
+  "TemporaryPassword": "1234567890aA@",
+  "ForceAliasCreation": true
+}

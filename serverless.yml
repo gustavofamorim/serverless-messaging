@@ -1,0 +1,77 @@
+service:
+  name: messaging
+
+plugins:
+  - serverless-webpack
+
+provider:
+  name: aws
+  runtime: nodejs6.10
+  region: us-east-1
+  stage: dev
+  environment:
+    SERVICE_NAME: ${self:service}
+    DYNAMODB_TABLE: messages
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+      Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+functions:
+  create:
+    handler: methods/create.create
+    events:
+      - http: &httpEventMethod
+          method: POST
+          path: create
+          cors: true
+          integration: lambda #Allow control with authorizer.claims all data will be exposed to this authorizer
+          authorizer:
+            name: authorizer
+            arn: arn:aws:cognito-idp:us-east-1:475907963822:userpool/us-east-1_VQhNzyHVZ
+            claims: #Just email will be exposed to aws cognito authorizer
+              - email
+  delete:
+    handler: methods/delete.deleteMessage
+    events:
+      - http:
+          <<: *httpEventMethod
+          method: DELETE
+          path: delete/{id}
+  list:
+    handler: methods/list.list
+    events:
+      - http:
+          <<: *httpEventMethod
+          method: GET
+          path: list
+  get:
+    handler: methods/get.get
+    events:
+      - http:
+          <<: *httpEventMethod
+          method: GET
+          path: get/{id}
+resources:
+  Resources:
+    MessagingDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          -
+            AttributeName: id
+            AttributeType: S
+        KeySchema:
+          -
+            AttributeName: id
+            KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        TableName: ${self:provider.environment.DYNAMODB_TABLE}

@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "sourceMap": true,
+    "lib": [
+      "es2017"
+    ]
+  }
+}

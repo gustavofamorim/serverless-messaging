@@ -1,0 +1,23 @@
+{
+  "name": "massaging-service",
+  "version": "0.1.0",
+  "description": "Messaging Service API using AWS Lambda and AWS Cognito",
+  "main": "webpack.config.js",
+  "dependencies": {
+    "aws-sdk": "^2.125.0",
+    "uuid": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.31",
+    "serverless-webpack": "^3.0.0",
+    "ts-loader": "^2.3.7",
+    "typescript": "^2.5.2",
+    "webpack": "^3.6.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "Gustavo Freitas de Amorim",
+  "license": "GPL"
+}
