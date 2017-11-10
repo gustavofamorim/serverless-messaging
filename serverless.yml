@@ -12,6 +12,9 @@ provider:
   environment:
     SERVICE_NAME: ${self:service}
     DYNAMODB_TABLE: messages
+    USER_POOL_NAME: messaging_pool
+    USER_POOL_CLIENT_NAME: messaging_pool_client
+    IDENTITY_POOL_NAME: messaging_identity_pool
   iamRoleStatements:
     - Effect: Allow
       Action:
@@ -22,6 +25,7 @@ provider:
         - dynamodb:UpdateItem
         - dynamodb:DeleteItem
       Resource: "arn:aws:dynamodb:${opt:region, self:provider.region}:*:table/${self:provider.environment.DYNAMODB_TABLE}"
+
 functions:
   create:
     handler: methods/create.create
@@ -30,12 +34,7 @@ functions:
           method: POST
           path: create
           cors: true
-          integration: lambda #Allow control with authorizer.claims all data will be exposed to this authorizer
-          authorizer:
-            name: authorizer
-            arn: arn:aws:cognito-idp:us-east-1:475907963822:userpool/us-east-1_VQhNzyHVZ
-            claims: #Just email will be exposed to aws cognito authorizer
-              - email
+          authorizer: aws_iam
   delete:
     handler: methods/delete.deleteMessage
     events:
@@ -57,8 +56,10 @@ functions:
           <<: *httpEventMethod
           method: GET
           path: get/{id}
+
 resources:
   Resources:
+    # DynamoDB Table
     MessagingDynamoDbTable:
       Type: 'AWS::DynamoDB::Table'
       DeletionPolicy: Retain
@@ -75,3 +76,131 @@ resources:
           ReadCapacityUnits: 1
           WriteCapacityUnits: 1
         TableName: ${self:provider.environment.DYNAMODB_TABLE}
+
+    # Cognito User Pool Configuration
+    # DOC: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-userpool.html
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:provider.environment.USER_POOL_NAME}
+        MfaConfiguration: OFF
+        AliasAttributes:
+          - email
+        Schema:
+          - Name: name
+            AttributeDataType: String
+            Mutable: true
+            Required: true
+          - Name: email
+            AttributeDataType: String
+            Mutable: false
+            Required: true
+
+    # Cognito User Pool Client Configuration
+    # DOC: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-userpoolclient.html
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:provider.environment.USER_POOL_CLIENT_NAME}
+        GenerateSecret: false
+        UserPoolId:
+          Ref: CognitoUserPool
+
+    # Cognito Identity Pool Configuration
+    # DOC: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-identitypool.html
+    CognitoIdentityPool:
+      Type: AWS::Cognito::IdentityPool
+      Properties:
+        IdentityPoolName: ${self:provider.environment.IDENTITY_POOL_NAME}
+        AllowUnauthenticatedIdentities: false # Unauth cannot access the API
+        CognitoIdentityProviders:
+          - ClientId:
+              Ref: CognitoUserPoolClient
+            ProviderName:
+              Fn::GetAtt: [CognitoUserPool, ProviderName]
+
+    # Cognito Identity Pool Roles
+    # DOC: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cognito-identitypoolroleattachment.html
+    CognitoIdentityPoolRoles:
+      Type: AWS::Cognito::IdentityPoolRoleAttachment
+      Properties:
+        IdentityPoolId:
+          Ref: CognitoIdentityPool
+        Roles: # Roles
+          authenticated:
+            Fn::GetAtt: [CognitoAuthRole, Arn] # Reference CognitoAuthRole
+          unauthenticated:
+            Fn::GetAtt: [CognitoUnauthRole, Arn] # Reference CognitoUnauthRole
+
+    # Default Cognito Auth roles when we create a user pool with the AWS Console
+    # DOC: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+    CognitoAuthRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: appAuthRole
+        Path: /
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud":
+                    Ref: CognitoIdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": authenticated
+        Policies:
+          - PolicyName: "CognitoAuthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "lambda:InvokeFunction"
+                  Resource: "*"
+    # Default Cognito Unauth roles when we create a user pool with the AWS Console
+    # DOC: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+    CognitoUnauthRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: appUnauthRole
+        Path: /
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal:
+                Federated: "cognito-identity.amazonaws.com"
+              Action:
+                - "sts:AssumeRoleWithWebIdentity"
+              Condition:
+                StringEquals:
+                  "cognito-identity.amazonaws.com:aud":
+                    Ref: CognitoIdentityPool
+                "ForAnyValue:StringLike":
+                  "cognito-identity.amazonaws.com:amr": unauthenticated
+        Policies:
+          - PolicyName: "CognitoUnauthorizedPolicy"
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: "Allow"
+                  Action:
+                    - "mobileanalytics:PutEvents"
+                    - "cognito-sync:*"
+                    - "cognito-identity:*"
+                  Resource: "*"
+                - Effect: "Allow"
+                  Action:
+                    - "lambda:InvokeFunction"
+                  Resource: "*"

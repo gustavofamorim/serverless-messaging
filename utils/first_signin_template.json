@@ -1,9 +1,0 @@
-{
-  "AuthFlow": "ADMIN_NO_SRP_AUTH",
-  "AuthParameters": {
-    "USERNAME": "gustavoamorim",
-    "PASSWORD": "1234567890aA@"
-  },
-  "ClientId": "4l0kdh361lcheaq1msvll3e5n9",
-  "UserPoolId": "us-east-1_VQhNzyHVZ"
-}

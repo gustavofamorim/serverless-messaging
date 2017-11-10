@@ -14,7 +14,7 @@ export abstract class AbstractController {
     const response = {
       statusCode: statusCode,
       headers: headers,
-      body: body,
+      body: JSON.stringify(body),
     };
 
     callback(null, response);
@@ -31,7 +31,7 @@ export abstract class AbstractController {
     }
 
     this.sendResponse(200,
-      {"Content-type": "application/json"},
+      {'Content-type': 'application/json'},
       data,
       callback);
   }

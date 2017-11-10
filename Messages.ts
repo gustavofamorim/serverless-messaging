@@ -10,9 +10,9 @@ export class Messages extends AbstractController {
 
   public create(request, callback){
 
-    obj = request.body;
+    var obj = JSON.parse(request.body);
 
-    if(obj.title && obj.body && (obj.email || obj.phone)){
+    if(obj != null && obj.title && obj.body && (obj.email || obj.phone)){
 
       var message = {
         title: obj.title,
@@ -32,21 +32,33 @@ export class Messages extends AbstractController {
 
   public fetchAll(request, callback){
     this.dbDriver.all(null, (error, data) => {
-      this.defaultResponse(error, data.Items, callback);
+      var response = {
+        itemsRetourned: data.Items.length,
+        data: data.Items
+      }
+      this.defaultResponse(error, response, callback);
     });
   }
 
   public find(request, callback){
-    id = request.path.id;
-    this.dbDriver.find(id, null, (error, data) => {
-      this.defaultResponse(error, data.Item, callback);
-    });
+    if(request.pathParameters != null && request.pathParameters.id != null){
+      this.dbDriver.find(request.pathParameters.id, null, (error, data) => {
+        this.defaultResponse(error, data.Item, callback);
+      });
+    }
+    else{
+      this.defaultInvalidDataResponse(callback);
+    }
   }
 
   public delete(request, callback){
-    id = request.path.id;
-    this.dbDriver.delete(id, (error, data) => {
-      this.defaultResponse(error, data, callback);
-    });
+    if(request.pathParameters != null && request.pathParameters.id != null){
+      this.dbDriver.delete(request.pathParameters.id, (error, data) => {
+        this.defaultResponse(error, data, callback);
+      });
+    }
+    else{
+      this.defaultInvalidDataResponse(callback);
+    }
   }
 }
