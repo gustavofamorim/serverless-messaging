@@ -8,7 +8,10 @@ export class Messages extends AbstractController {
           new DynamoDriver(process.env.DYNAMODB_TABLE));
   }
 
-  public create(obj, callback){
+  public create(request, callback){
+
+    obj = request.body;
+
     if(obj.title && obj.body && (obj.email || obj.phone)){
 
       var message = {
@@ -27,19 +30,21 @@ export class Messages extends AbstractController {
     }
   }
 
-  public fetchAll(callback){
+  public fetchAll(request, callback){
     this.dbDriver.all(null, (error, data) => {
       this.defaultResponse(error, data.Items, callback);
     });
   }
 
-  public find(id, callback){
+  public find(request, callback){
+    id = request.path.id;
     this.dbDriver.find(id, null, (error, data) => {
       this.defaultResponse(error, data.Item, callback);
     });
   }
 
-  public delete(id, callback){
+  public delete(request, callback){
+    id = request.path.id;
     this.dbDriver.delete(id, (error, data) => {
       this.defaultResponse(error, data, callback);
     });
